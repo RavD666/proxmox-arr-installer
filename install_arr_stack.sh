@@ -3,34 +3,34 @@
 set -e
 
 echo "🔧 Updating system..."
-sudo apt update && sudo apt upgrade -y
+ apt update &&  apt upgrade -y
 
 echo "📦 Installing dependencies..."
-sudo apt install -y curl git apt-transport-https ca-certificates gnupg lsb-release cifs-utils
+ apt install -y curl git apt-transport-https ca-certificates gnupg lsb-release cifs-utils
 
 echo "🐳 Installing Docker..."
-curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg |  gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 
 echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
   https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
   $(lsb_release -cs) stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+   tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+ apt update
+ apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
 echo "✅ Docker installed!"
-sudo systemctl enable docker
+ systemctl enable docker
 
 echo "📁 Mounting network share..."
-sudo mkdir -p /mnt/arrdownloads
-echo "//192.168.1.101/Arrdownload /mnt/arrdownloads cifs username=arr,password=Crystal121,iocharset=utf8,uid=1000,gid=1000,file_mode=0777,dir_mode=0777,noperm 0 0" | sudo tee -a /etc/fstab
-sudo mount -a
+ mkdir -p /mnt/arrdownloads
+echo "//192.168.1.101/Arrdownload /mnt/arrdownloads cifs username=arr,password=Crystal121,iocharset=utf8,uid=1000,gid=1000,file_mode=0777,dir_mode=0777,noperm 0 0" |  tee -a /etc/fstab
+ mount -a
 
 echo "🚀 Installing Portainer..."
-sudo docker volume create portainer_data
-sudo docker run -d \
+ docker volume create portainer_data
+ docker run -d \
   -p 9443:9443 \
   --name portainer \
   --restart=always \

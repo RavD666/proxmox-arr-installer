@@ -25,7 +25,7 @@ echo "✅ Docker installed!"
 
 echo "📁 Mounting network share..."
  mkdir -p /mnt/arrdownloads
-echo "//192.168.1.101/Arrdownload /mnt/arrdownloads cifs username=arr,password=Crystal121,iocharset=utf8,uid=1000,gid=1000,file_mode=0777,dir_mode=0777,noperm 0 0" |  tee -a /etc/fstab
+echo "//192.168.1.101/Arrdownload /mnt/arrdownloads cifs username=un,password=pw,iocharset=utf8,uid=1000,gid=1000,file_mode=0777,dir_mode=0777,noperm 0 0" |  tee -a /etc/fstab
  mount -a
 
 echo "🚀 Installing Portainer..."

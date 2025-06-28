@@ -1,6 +1,6 @@
 #!/bin/bash
 # ------------------------------------------------------------
-# Minimal “fire-and-forget” media-server installer (UPDATED)
+# Minimal “fire‑and‑forget” media‑server installer  – clean‑reinstall friendly
 # ------------------------------------------------------------
 set -e
 
@@ -16,10 +16,10 @@ apt install -y curl git apt-transport-https ca-certificates gnupg \
                lsb-release cifs-utils
 
 # ------------------------------------------------------------
-# 2️⃣  Docker Engine & compose-plugin
+# 2️⃣  Docker Engine & compose‑plugin (idempotent)
 # ------------------------------------------------------------
 
-echo "🐳 Installing Docker Engine & compose-plugin..."
+echo "🐳 Ensuring Docker Engine & compose‑plugin are present..."
 curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg \
   | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 
@@ -32,63 +32,240 @@ echo \
 apt update
 apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 systemctl enable --now docker
-echo "✅ Docker installed!"
+
+echo "✅ Docker installed or already present"
 
 # ------------------------------------------------------------
 # 3️⃣  Mount network shares (CIFS)
 # ------------------------------------------------------------
 
 echo "📁 Mounting CIFS shares..."
-# Use consistent, case-correct paths
 mkdir -p /mnt/Arrdownload /mnt/Media
 
-# Arrdownload share
-if ! grep -q "/mnt/Arrdownload" /etc/fstab; then
-  echo "//192.168.1.101/Arrdownload /mnt/Arrdownload cifs \
+add_fstab() {
+  local SHARE="$1" MNT="$2"
+  if ! grep -q "${MNT}$" /etc/fstab; then
+    echo "//192.168.1.101/${SHARE} ${MNT} cifs \
 username=arr,password=Crystal121,iocharset=utf8,uid=1000,gid=1000,\
 file_mode=0777,dir_mode=0777,noperm 0 0" >> /etc/fstab
-fi
+  fi
+}
 
-# Media share
-if ! grep -q "/mnt/Media" /etc/fstab; then
-  echo "//192.168.1.101/Media /mnt/Media cifs \
-username=arr,password=Crystal121,iocharset=utf8,uid=1000,gid=1000,\
-file_mode=0777,dir_mode=0777,noperm 0 0" >> /etc/fstab
-fi
+add_fstab "Arrdownload" "/mnt/Arrdownload"
+add_fstab "Media"       "/mnt/Media"
 
-# Reload systemd to pick up new fstab entries, then mount
-systemctl daemon-reload
+systemctl daemon-reload   # pick up new fstab lines
 mount -a
-echo "✅ Shares mounted!"
+
+echo "✅ Shares mounted (or already mounted)"
 
 # ------------------------------------------------------------
-# 4️⃣  Optional: Portainer (web UI for Docker)
+# 4️⃣  Portainer – (always) recreate so latest image is used
 # ------------------------------------------------------------
 
-echo "🚀 Installing Portainer..."
-docker volume create portainer_data
+echo "🚀 (Re)deploying Portainer..."
+docker rm -f portainer 2>/dev/null || true
+docker volume create portainer_data >/dev/null 2>&1
+
 docker run -d --name portainer --restart=always \
   -p 9443:9443 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v portainer_data:/data \
   portainer/portainer-ce:latest
 
+echo "✅ Portainer running at https://<VM-IP>:9443"
+
 # ------------------------------------------------------------
-# 5️⃣  Create ARR-stack compose file
+# 5️⃣  Create / refresh ARR‑stack compose file
 # ------------------------------------------------------------
 
-echo "📦 Creating ARR stack (with VPN, qBittorrent & SABnzbd)..."
+echo "📦 Generating ARR stack..."
 mkdir -p ~/arr-stack && cd ~/arr-stack
 
-cat <<'YML' > docker-compose.yml
-# ... [unchanged docker-compose.yml content] ...
+cat > docker-compose.yml <<'YML'
+services:
+
+  # ── VPN ───────────────────────────────────────────────────
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TZ=Etc/UTC
+      # Supply your own provider OR mount .ovpn configs
+      - VPN_SERVICE_PROVIDER=custom
+      - OPENVPN_USER=YOUR_VPN_USER
+      - OPENVPN_PASSWORD=YOUR_VPN_PASS
+    volumes:
+      - ./config/gluetun:/gluetun
+    ports:   # forwarded ports must be declared here
+      - "8080:8080"   # qBittorrent Web UI
+      - "6881:6881"
+      - "6881:6881/udp"
+      - "9090:9090"   # SABnzbd Web UI
+    restart: unless-stopped
+
+  # ── qBittorrent ──────────────────────────────────────────
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: "service:gluetun"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - WEBUI_PORT=8080
+    volumes:
+      - /mnt/Arrdownload:/downloads
+      - ./config/qbittorrent:/config
+    restart: unless-stopped
+    depends_on:
+      - gluetun
+
+  # ── SABnzbd ──────────────────────────────────────────────
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    network_mode: "service:gluetun"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - /mnt/Arrdownload:/downloads
+      - ./config/sabnzbd:/config
+    restart: unless-stopped
+    depends_on:
+      - gluetun
+
+  # ── Prowlarr ─────────────────────────────────────────────
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - ./config/prowlarr:/config
+    ports:
+      - "9696:9696"
+    restart: unless-stopped
+
+  # anchors for env reuse
+  # Using YAML anchors
+  x-arr-env: &arr-env
+    PUID: 1000
+    PGID: 1000
+    TZ: Etc/UTC
+
+  # ── Sonarr ───────────────────────────────────────────────
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      <<: *arr-env
+    volumes:
+      - ./config/sonarr:/config
+      - /mnt/Arrdownload:/downloads
+      - /mnt/Media/TV:/tv
+      - /mnt/Media:/media
+    ports:
+      - "8989:8989"
+    restart: unless-stopped
+
+  # ── Radarr ───────────────────────────────────────────────
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      <<: *arr-env
+    volumes:
+      - ./config/radarr:/config
+      - /mnt/Arrdownload:/downloads
+      - /mnt/Media/Movies:/movies
+      - /mnt/Media:/media
+    ports:
+      - "7878:7878"
+    restart: unless-stopped
+
+  # ── Lidarr ───────────────────────────────────────────────
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    environment:
+      <<: *arr-env
+    volumes:
+      - ./config/lidarr:/config
+      - /mnt/Arrdownload:/downloads
+      - /mnt/Media/Music:/music
+      - /mnt/Media:/media
+    ports:
+      - "8686:8686"
+    restart: unless-stopped
+
+  # ── Readarr ──────────────────────────────────────────────
+  readarr:
+    image: lscr.io/linuxserver/readarr:latest
+    container_name: readarr
+    environment:
+      <<: *arr-env
+    volumes:
+      - ./config/readarr:/config
+      - /mnt/Arrdownload:/downloads
+      - /mnt/Media/Books:/books
+      - /mnt/Media:/media
+    ports:
+      - "8787:8787"
+    restart: unless-stopped
+
+  # ── Whisparr (adult) ─────────────────────────────────────
+  whisparr:
+    image: ghcr.io/thespad/whisparr:latest   # ✅ correct registry
+    container_name: whisparr
+    environment:
+      <<: *arr-env
+    volumes:
+      - ./config/whisparr:/config
+      - /mnt/Arrdownload:/downloads
+      - /mnt/Media/XXX:/whisparr
+      - /mnt/Media:/media
+    ports:
+      - "6969:6969"
+    restart: unless-stopped
+
+  # ── Jellyfin (media server) ──────────────────────────────
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - ./config/jellyfin:/config
+      - /mnt/Media:/media
+    ports:
+      - "8096:8096"   # HTTP
+      - "8920:8920"   # HTTPS
+    restart: unless-stopped
 YML
 
 # ------------------------------------------------------------
-# 6️⃣  Launch!
+# 6️⃣  Launch (clean rebuild every time)
 # ------------------------------------------------------------
 
-echo "🛁 Starting containers…"
+echo "♻️  Re‑creating ARR containers…"
+# bring down any existing stack first (ignore errors)
+docker compose down --volumes --remove-orphans 2>/dev/null || true
+# pull new/updated images
+
+docker compose pull --quiet
+# start everything
+
 docker compose up -d
 
 echo ""

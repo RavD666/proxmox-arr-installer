@@ -95,20 +95,18 @@ services:
       - /dev/net/tun:/dev/net/tun
     environment:
       - TZ=Etc/UTC
-      # Supply your own provider OR mount .ovpn configs
       - VPN_SERVICE_PROVIDER=custom
       - OPENVPN_USER=YOUR_VPN_USER
       - OPENVPN_PASSWORD=YOUR_VPN_PASS
     volumes:
       - ./config/gluetun:/gluetun
-    ports:   # forwarded ports must be declared here
-      - "8080:8080"   # qBittorrent Web UI
+    ports:
+      - "8080:8080"
       - "6881:6881"
       - "6881:6881/udp"
-      - "9090:9090"   # SABnzbd Web UI
+      - "9090:9090"
     restart: unless-stopped
 
-  # ── qBittorrent ──────────────────────────────────────────
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
@@ -125,7 +123,6 @@ services:
     depends_on:
       - gluetun
 
-  # ── SABnzbd ──────────────────────────────────────────────
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
@@ -141,7 +138,6 @@ services:
     depends_on:
       - gluetun
 
-  # ── Prowlarr ─────────────────────────────────────────────
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
@@ -155,14 +151,11 @@ services:
       - "9696:9696"
     restart: unless-stopped
 
-  # anchors for env reuse
-  # Using YAML anchors
   x-arr-env: &arr-env
     PUID: 1000
     PGID: 1000
     TZ: Etc/UTC
 
-  # ── Sonarr ───────────────────────────────────────────────
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
@@ -177,7 +170,6 @@ services:
       - "8989:8989"
     restart: unless-stopped
 
-  # ── Radarr ───────────────────────────────────────────────
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
@@ -192,7 +184,6 @@ services:
       - "7878:7878"
     restart: unless-stopped
 
-  # ── Lidarr ───────────────────────────────────────────────
   lidarr:
     image: lscr.io/linuxserver/lidarr:latest
     container_name: lidarr
@@ -207,7 +198,6 @@ services:
       - "8686:8686"
     restart: unless-stopped
 
-  # ── Readarr ──────────────────────────────────────────────
   readarr:
     image: lscr.io/linuxserver/readarr:latest
     container_name: readarr
@@ -222,9 +212,8 @@ services:
       - "8787:8787"
     restart: unless-stopped
 
-  # ── Whisparr (adult) ─────────────────────────────────────
   whisparr:
-    image: ghcr.io/thespad/whisparr:latest   # ✅ correct registry
+    image: ghcr.io/hotio/whisparr:release
     container_name: whisparr
     environment:
       <<: *arr-env
@@ -237,7 +226,6 @@ services:
       - "6969:6969"
     restart: unless-stopped
 
-  # ── Jellyfin (media server) ──────────────────────────────
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
@@ -249,8 +237,8 @@ services:
       - ./config/jellyfin:/config
       - /mnt/Media:/media
     ports:
-      - "8096:8096"   # HTTP
-      - "8920:8920"   # HTTPS
+      - "8096:8096"
+      - "8920:8920"
     restart: unless-stopped
 YML
 
@@ -259,13 +247,8 @@ YML
 # ------------------------------------------------------------
 
 echo "♻️  Re‑creating ARR containers…"
-# bring down any existing stack first (ignore errors)
 docker compose down --volumes --remove-orphans 2>/dev/null || true
-# pull new/updated images
-
 docker compose pull --quiet
-# start everything
-
 docker compose up -d
 
 echo ""

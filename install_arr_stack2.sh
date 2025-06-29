@@ -201,9 +201,10 @@ services:
       - "8686:8686"
     restart: unless-stopped
 
-  readarr:
-    image: lscr.io/linuxserver/readarr:latest
+    readarr:
+    image: linuxserver/readarr:develop
     container_name: readarr
+    hostname: readarr
     environment:
       - PUID=1000
       - PGID=1000

@@ -82,6 +82,8 @@ echo "✅ Portainer running at https://<VM-IP>:9443"
 echo "📦 Generating ARR stack..."
 mkdir -p ~/arr-stack && cd ~/arr-stack
 
+rm -f docker-compose.yml  # 🧹 Prevent using an empty/broken file
+
 cat > docker-compose.yml <<'YML'
 services:
 
@@ -151,16 +153,13 @@ services:
       - "9696:9696"
     restart: unless-stopped
 
-  x-arr-env: &arr-env
-    PUID: 1000
-    PGID: 1000
-    TZ: Etc/UTC
-
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     environment:
-      <<: *arr-env
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
     volumes:
       - ./config/sonarr:/config
       - /mnt/Arrdownload:/downloads
@@ -174,7 +173,9 @@ services:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     environment:
-      <<: *arr-env
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
     volumes:
       - ./config/radarr:/config
       - /mnt/Arrdownload:/downloads
@@ -188,7 +189,9 @@ services:
     image: lscr.io/linuxserver/lidarr:latest
     container_name: lidarr
     environment:
-      <<: *arr-env
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
     volumes:
       - ./config/lidarr:/config
       - /mnt/Arrdownload:/downloads
@@ -202,7 +205,9 @@ services:
     image: lscr.io/linuxserver/readarr:latest
     container_name: readarr
     environment:
-      <<: *arr-env
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
     volumes:
       - ./config/readarr:/config
       - /mnt/Arrdownload:/downloads
@@ -210,20 +215,6 @@ services:
       - /mnt/Media:/media
     ports:
       - "8787:8787"
-    restart: unless-stopped
-
-  whisparr:
-    image: ghcr.io/hotio/whisparr:release
-    container_name: whisparr
-    environment:
-      <<: *arr-env
-    volumes:
-      - ./config/whisparr:/config
-      - /mnt/Arrdownload:/downloads
-      - /mnt/Media/XXX:/whisparr
-      - /mnt/Media:/media
-    ports:
-      - "6969:6969"
     restart: unless-stopped
 
   jellyfin:
@@ -263,7 +254,6 @@ cat <<EOF
   Radarr        http://$IP:7878
   Lidarr        http://$IP:8686
   Readarr       http://$IP:8787
-  Whisparr      http://$IP:6969
   Prowlarr      http://$IP:9696
   Jellyfin      http://$IP:8096
 EOF

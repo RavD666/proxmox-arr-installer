@@ -201,23 +201,6 @@ services:
       - "8686:8686"
     restart: unless-stopped
 
-    readarr:
-    image: linuxserver/readarr:develop
-    container_name: readarr
-    hostname: readarr
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Etc/UTC
-    volumes:
-      - ./config/readarr:/config
-      - /mnt/Arrdownload:/downloads
-      - /mnt/Media/Books:/books
-      - /mnt/Media:/media
-    ports:
-      - "8787:8787"
-    restart: unless-stopped
-
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
@@ -254,7 +237,6 @@ cat <<EOF
   Sonarr        http://$IP:8989
   Radarr        http://$IP:7878
   Lidarr        http://$IP:8686
-  Readarr       http://$IP:8787
   Prowlarr      http://$IP:9696
   Jellyfin      http://$IP:8096
 EOF

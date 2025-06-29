@@ -201,6 +201,22 @@ services:
       - "8686:8686"
     restart: unless-stopped
 
+  readarr:
+    image: lscr.io/linuxserver/readarr:develop
+    container_name: readarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - ./config/readarr:/config
+      - /mnt/Arrdownload:/downloads
+      - /mnt/Media/Books:/books
+      - /mnt/Media:/media
+    ports:
+      - "8787:8787"
+    restart: unless-stopped
+
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
@@ -232,7 +248,8 @@ IP=$(hostname -I | awk '{print $1}')
 cat <<EOF
 
   Portainer     https://$IP:9443
-  qBittorrent   http://$IP:8080  (via VPN)
+  qBittorrent   http://$IP:8080
+  Readarr       http://$IP:8787
   SABnzbd       http://$IP:9090  (via VPN)
   Sonarr        http://$IP:8989
   Radarr        http://$IP:7878

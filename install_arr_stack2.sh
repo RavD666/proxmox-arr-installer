@@ -88,26 +88,26 @@ cat > docker-compose.yml <<'YML'
 services:
 
   # ── VPN ───────────────────────────────────────────────────
-  gluetun:
-    image: qmcgaw/gluetun:v3.37.0
-    container_name: gluetun
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    environment:
-      - TZ=Etc/UTC
-      - VPN_SERVICE_PROVIDER=custom
-      - OPENVPN_USER=YOUR_VPN_USER
-      - OPENVPN_PASSWORD=YOUR_VPN_PASS
-    volumes:
-      - ./config/gluetun:/gluetun
-    ports:
-      - "8080:8080"
-      - "6881:6881"
-      - "6881:6881/udp"
-      - "9090:9090"
-    restart: unless-stopped
+#  gluetun:
+#    image: qmcgaw/gluetun:v3.37.0
+#    container_name: gluetun
+#    cap_add:
+#      - NET_ADMIN
+#    devices:
+#      - /dev/net/tun:/dev/net/tun
+#    environment:
+#      - TZ=Etc/UTC
+#      - VPN_SERVICE_PROVIDER=custom
+#      - OPENVPN_USER=YOUR_VPN_USER
+#      - OPENVPN_PASSWORD=YOUR_VPN_PASS
+#    volumes:
+#      - ./config/gluetun:/gluetun
+#    ports:
+#      - "8080:8080"
+#      - "6881:6881"
+#      - "6881:6881/udp"
+#      - "9090:9090"
+#    restart: unless-stopped
 
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
@@ -125,20 +125,20 @@ services:
     depends_on:
       - gluetun
 
-  sabnzbd:
-    image: lscr.io/linuxserver/sabnzbd:latest
-    container_name: sabnzbd
-    network_mode: "service:gluetun"
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Etc/UTC
-    volumes:
-      - /mnt/Arrdownload:/downloads
-      - ./config/sabnzbd:/config
-    restart: unless-stopped
-    depends_on:
-      - gluetun
+#  sabnzbd:
+#    image: lscr.io/linuxserver/sabnzbd:latest
+#    container_name: sabnzbd
+#    network_mode: "service:gluetun"
+#    environment:
+#      - PUID=1000
+#      - PGID=1000
+#      - TZ=Etc/UTC
+#    volumes:
+#      - /mnt/Arrdownload:/downloads
+#      - ./config/sabnzbd:/config
+#    restart: unless-stopped
+#    depends_on:
+#      - gluetun
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
